@@ -17,8 +17,15 @@ internal class PanelBottomSheet(private val wvManager: QuackbackWebViewManager) 
 
     override fun onStart() {
         super.onStart()
-        dialog?.findViewById<FrameLayout>(com.google.android.material.R.id.design_bottom_sheet)?.let {
-            BottomSheetBehavior.from(it).apply { state = BottomSheetBehavior.STATE_EXPANDED; peekHeight = (resources.displayMetrics.heightPixels * 0.5).toInt() }
+        dialog?.findViewById<FrameLayout>(com.google.android.material.R.id.design_bottom_sheet)?.let { sheet ->
+            // Set explicit height so the WebView has room to render
+            val screenHeight = resources.displayMetrics.heightPixels
+            sheet.layoutParams = sheet.layoutParams.apply { height = (screenHeight * 0.85).toInt() }
+            BottomSheetBehavior.from(sheet).apply {
+                state = BottomSheetBehavior.STATE_EXPANDED
+                peekHeight = (screenHeight * 0.5).toInt()
+                skipCollapsed = false
+            }
         }
     }
 
