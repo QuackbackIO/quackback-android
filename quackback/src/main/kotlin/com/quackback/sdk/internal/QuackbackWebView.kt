@@ -43,6 +43,7 @@ internal class QuackbackWebViewManager(private val config: QuackbackConfig) {
             if (p.event == QuackbackEvent.READY) {
                 isReady = true
                 webView?.post { webView?.evaluateJavascript(JSBridge.initCommand(config), null) }
+                config.locale?.let { webView?.post { webView?.evaluateJavascript(JSBridge.localeCommand(it), null) } }
                 pending.forEach { cmd -> webView?.post { webView?.evaluateJavascript(cmd, null) } }
                 pending.clear(); listener?.onReady(); return
             }

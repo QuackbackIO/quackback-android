@@ -10,6 +10,9 @@ internal object JSBridge {
         val p = JSONObject().apply { put("appId", config.appId); put("theme", config.theme.value); config.locale?.let { put("locale", it) } }
         return "window.postMessage({type:'quackback:init',data:$p},'*');"
     }
+    fun localeCommand(locale: String): String =
+        "window.postMessage({type:'quackback:locale',data:'$locale'},'*');"
+
     fun identifyCommand(ssoToken: String): String {
         val p = JSONObject().apply { put("ssoToken", ssoToken) }
         return "window.postMessage({type:'quackback:identify',data:$p},'*');"

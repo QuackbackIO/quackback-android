@@ -14,5 +14,6 @@ data class QuackbackConfig(
         .path("/widget")
         .appendQueryParameter("source", "native")
         .appendQueryParameter("platform", "android")
+        .apply { locale?.let { appendQueryParameter("locale", it) } }
         .build().toString()
 }
