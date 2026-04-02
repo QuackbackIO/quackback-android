@@ -36,7 +36,12 @@ object Quackback {
     fun identify(ssoToken: String) { enqueue(JSBridge.identifyCommand(ssoToken = ssoToken)) }
     fun identify(userId: String, email: String, name: String? = null, avatarURL: String? = null) { enqueue(JSBridge.identifyCommand(userId, email, name, avatarURL)) }
     fun logout() { enqueue(JSBridge.logoutCommand()) }
-    fun open(board: String? = null) { val cfg = config ?: return; val act = currentActivity ?: return; ensureWV(cfg); wvManager?.execute(JSBridge.openCommand(board)); present(act) }
+    fun open(board: String? = null) {
+        val cfg = config ?: run { android.util.Log.e("Quackback", "open: config is null"); return }
+        val act = currentActivity ?: run { android.util.Log.e("Quackback", "open: currentActivity is null"); return }
+        android.util.Log.d("Quackback", "open: activity=${act.javaClass.name}, isFragmentActivity=${act is FragmentActivity}")
+        ensureWV(cfg); wvManager?.execute(JSBridge.openCommand(board)); present(act)
+    }
     fun close() { dismiss() }
     fun showTrigger() { val cfg = config ?: return; val act = currentActivity ?: return; if (trigger != null) return; trigger = TriggerButton(act, cfg.position, cfg.buttonColor) { if (isShowing) close() else open() }.also { it.install() } }
     fun hideTrigger() { trigger?.remove(); trigger = null }
@@ -47,7 +52,8 @@ object Quackback {
     private fun ensureWV(cfg: QuackbackConfig) { if (wvManager != null) return; wvManager = QuackbackWebViewManager(cfg).also { it.listener = wvListener } }
     private fun enqueue(js: String) { if (wvManager?.webView != null) wvManager?.execute(js) else pendingIdentify = js }
     private fun present(act: Activity) {
-        if (isShowing) return; val m = wvManager ?: return; val fa = act as? FragmentActivity ?: return; m.loadIfNeeded(act)
+        android.util.Log.d("Quackback", "present: isShowing=$isShowing, wvManager=${wvManager != null}")
+        if (isShowing) return; val m = wvManager ?: return; val fa = act as? FragmentActivity ?: run { android.util.Log.e("Quackback", "present: not a FragmentActivity"); return }; m.loadIfNeeded(act)
         val sheet = PanelBottomSheet(m).also { it.onDismissed = { isShowing = false; trigger?.setOpen(false); panel = null } }
         sheet.show(fa.supportFragmentManager, "quackback"); isShowing = true; trigger?.setOpen(true); panel = sheet
     }

@@ -34,7 +34,7 @@ internal class QuackbackWebViewManager(private val config: QuackbackConfig) {
         wv.loadUrl(config.widgetURL); webView = wv
     }
 
-    fun execute(js: String) { if (!isReady) { pending.add(js); return }; webView?.evaluateJavascript(js, null) }
+    fun execute(js: String) { if (!isReady) { pending.add(js); return }; webView?.post { webView?.evaluateJavascript(js, null) } }
     fun tearDown() { webView?.removeJavascriptInterface("QuackbackBridge"); webView?.stopLoading(); webView?.destroy(); webView = null; isReady = false; pending.clear() }
 
     private inner class Bridge {
