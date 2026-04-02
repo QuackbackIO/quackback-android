@@ -17,13 +17,18 @@ internal object JSBridge {
     }
     fun openCommand(board: String?): String = if (board != null) "Quackback('open', ${JSONObject().apply { put("board", board) }});" else "Quackback('open');"
     fun logoutCommand() = "Quackback('logout');"
-    fun parseEvent(json: String): ParsedEvent? = try {
-        val obj = JSONObject(json)
-        val event = QuackbackEvent.fromValue(obj.optString("event")) ?: return null
-        val data = mutableMapOf<String, Any>()
-        obj.optJSONObject("data")?.let { d -> val src = d.optJSONObject("payload") ?: d; for (k in src.keys()) data[k] = src.get(k) }
-        ParsedEvent(event, data)
-    } catch (_: Exception) { null }
+    fun parseEvent(json: String): ParsedEvent? {
+        return try {
+            val obj = JSONObject(json)
+            val event = QuackbackEvent.fromValue(obj.optString("event")) ?: return null
+            val data = mutableMapOf<String, Any>()
+            obj.optJSONObject("data")?.let { d ->
+                val src = d.optJSONObject("payload") ?: d
+                for (k in src.keys()) data[k] = src.get(k)
+            }
+            ParsedEvent(event, data)
+        } catch (_: Exception) { null }
+    }
 
     val bridgeScript = """
         (function(){

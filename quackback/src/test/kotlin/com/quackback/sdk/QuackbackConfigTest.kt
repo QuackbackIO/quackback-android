@@ -1,7 +1,10 @@
 package com.quackback.sdk
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class QuackbackConfigTest {
     @Test fun `defaults`() {
         val c = QuackbackConfig(appId = "t", baseURL = "https://x.com")

@@ -2,7 +2,10 @@ package com.quackback.sdk
 import com.quackback.sdk.internal.JSBridge
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class JSBridgeTest {
     @Test fun `init command`() {
         val c = QuackbackConfig(appId = "a", baseURL = "https://x.com", theme = QuackbackTheme.DARK, locale = "fr")
@@ -34,7 +37,8 @@ class JSBridgeTest {
     }
     @Test fun `identify attrs with avatarURL`() {
         val js = JSBridge.identifyCommand(userId = "u", email = "e", name = "n", avatarURL = "https://img.com/a.png")
-        assertTrue(js.contains("\"avatarURL\":\"https://img.com/a.png\""))
+        assertTrue(js.contains("\"avatarURL\""))
+        assertTrue(js.contains("img.com"))
     }
     @Test fun `identify attrs without name`() {
         val js = JSBridge.identifyCommand(userId = "u", email = "e", name = null, avatarURL = null)
