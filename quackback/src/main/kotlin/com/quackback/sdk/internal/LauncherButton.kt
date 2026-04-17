@@ -15,7 +15,7 @@ import com.quackback.sdk.R
 
 internal class LauncherButton(
     private val activity: Activity, private val position: QuackbackPosition,
-    color: String?, private val onClick: () -> Unit
+    backgroundHex: String?, foregroundHex: String?, private val onClick: () -> Unit
 ) {
     private var button: FrameLayout? = null
     private var chatIcon: ImageView? = null
@@ -25,7 +25,8 @@ internal class LauncherButton(
     private val sizePx = (48 * dp).toInt()
     private val marginPx = (24 * dp).toInt()
     private val iconPx = (28 * dp).toInt()
-    private val bgColor = parseColor(color)
+    private var bgColor = parseColor(backgroundHex, DEFAULT_BG_COLOR)
+    private var iconColor = parseColor(foregroundHex, DEFAULT_ICON_COLOR)
 
     fun install() {
         if (button != null) return
@@ -34,7 +35,7 @@ internal class LauncherButton(
             gravity = Gravity.CENTER
         }
 
-        val iconTint = ColorStateList.valueOf(DEFAULT_ICON_COLOR)
+        val iconTint = ColorStateList.valueOf(iconColor)
         val chat = ImageView(activity).apply {
             setImageResource(R.drawable.qb_ic_chat)
             imageTintList = iconTint
@@ -96,10 +97,13 @@ internal class LauncherButton(
         button?.animate()?.alpha(1f)?.setDuration(200)?.start()
     }
 
-    fun updateColor(hex: String?) {
-        val color = parseColor(hex)
-        val bg = button?.background as? GradientDrawable ?: return
-        bg.setColor(color)
+    fun updateColors(backgroundHex: String?, foregroundHex: String?) {
+        bgColor = parseColor(backgroundHex, DEFAULT_BG_COLOR)
+        iconColor = parseColor(foregroundHex, DEFAULT_ICON_COLOR)
+        (button?.background as? GradientDrawable)?.setColor(bgColor)
+        val tint = ColorStateList.valueOf(iconColor)
+        chatIcon?.imageTintList = tint
+        closeIcon?.imageTintList = tint
     }
 
     fun setOpen(open: Boolean) {
@@ -137,10 +141,10 @@ internal class LauncherButton(
         }
     }
 
-    private fun parseColor(hex: String?): Int =
+    private fun parseColor(hex: String?, fallback: Int): Int =
         if (hex != null && hex.startsWith("#") && hex.length == 7)
-            try { Color.parseColor(hex) } catch (_: Exception) { DEFAULT_BG_COLOR }
-        else DEFAULT_BG_COLOR
+            try { Color.parseColor(hex) } catch (_: Exception) { fallback }
+        else fallback
 
     companion object {
         // Quackback brand defaults — shown before the server theme fetch

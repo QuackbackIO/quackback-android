@@ -1,6 +1,7 @@
 package com.quackback.sdk
 import android.app.Activity
 import android.app.Application
+import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -25,7 +26,13 @@ object Quackback {
     private var launcherRevealFallback: Runnable? = null
     private const val LAUNCHER_REVEAL_FALLBACK_MS: Long = 1500
 
-    private data class ServerTheme(val lightPrimary: String, val darkPrimary: String)
+    private data class ServerTheme(
+        val themeMode: String?,
+        val lightPrimary: String?,
+        val lightPrimaryForeground: String?,
+        val darkPrimary: String?,
+        val darkPrimaryForeground: String?,
+    )
 
     private val lifecycle = object : Application.ActivityLifecycleCallbacks {
         override fun onActivityResumed(a: Activity) { currentActivity = a }
@@ -79,8 +86,10 @@ object Quackback {
         val cfg = config ?: return
         val act = currentActivity ?: return
         if (launcher != null) return
-        val color = resolveThemeColor()
-        val btn = LauncherButton(act, cfg.placement, color) { if (isShowing) close() else open() }.also { it.install() }
+        val colors = resolveLauncherColors()
+        val btn = LauncherButton(act, cfg.placement, colors.background, colors.foreground) {
+            if (isShowing) close() else open()
+        }.also { it.install() }
         launcher = btn
         if (themeFetched) {
             btn.reveal()
@@ -105,13 +114,30 @@ object Quackback {
         currentActivity = null
     }
 
-    private fun resolveThemeColor(): String? {
-        val theme = serverTheme ?: return null
-        val cfg = config ?: return theme.lightPrimary
-        return when (cfg.theme) {
-            QuackbackTheme.LIGHT -> theme.lightPrimary
-            QuackbackTheme.DARK -> theme.darkPrimary
-            QuackbackTheme.SYSTEM -> theme.lightPrimary // LauncherButton uses this as default
+    private data class ResolvedLauncherColors(val background: String?, val foreground: String?)
+
+    private fun resolveLauncherColors(): ResolvedLauncherColors {
+        val theme = serverTheme ?: return ResolvedLauncherColors(null, null)
+        // themeMode on the server wins — it reflects what the iframe is actually
+        // showing. `user` means follow device preference.
+        val serverMode = theme.themeMode
+        val systemDark = (currentActivity?.resources?.configuration?.uiMode ?: 0) and
+            Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+        val useDark = when (serverMode) {
+            "dark" -> true
+            "light" -> false
+            else -> systemDark
+        }
+        return if (useDark) {
+            ResolvedLauncherColors(
+                background = theme.darkPrimary ?: theme.lightPrimary,
+                foreground = theme.darkPrimaryForeground ?: theme.lightPrimaryForeground,
+            )
+        } else {
+            ResolvedLauncherColors(
+                background = theme.lightPrimary,
+                foreground = theme.lightPrimaryForeground,
+            )
         }
     }
 
@@ -129,8 +155,13 @@ object Quackback {
                     val t = json.optJSONObject("theme")
                     if (t != null) {
                         serverTheme = ServerTheme(
-                            lightPrimary = t.optString("lightPrimary", "#6366f1"),
-                            darkPrimary = t.optString("darkPrimary", "#6366f1"),
+                            themeMode = t.optString("themeMode").takeIf { it.isNotEmpty() },
+                            lightPrimary = t.optString("lightPrimary").takeIf { it.isNotEmpty() },
+                            lightPrimaryForeground = t.optString("lightPrimaryForeground")
+                                .takeIf { it.isNotEmpty() },
+                            darkPrimary = t.optString("darkPrimary").takeIf { it.isNotEmpty() },
+                            darkPrimaryForeground = t.optString("darkPrimaryForeground")
+                                .takeIf { it.isNotEmpty() },
                         )
                     }
                 }
@@ -139,7 +170,8 @@ object Quackback {
                 // Network error — fall back to default color
             }
             mainHandler.post {
-                launcher?.updateColor(resolveThemeColor())
+                val colors = resolveLauncherColors()
+                launcher?.updateColors(colors.background, colors.foreground)
                 themeFetched = true
                 launcher?.reveal()
                 launcherRevealFallback?.let { mainHandler.removeCallbacks(it) }
