@@ -94,7 +94,7 @@ internal class LauncherButton(
     fun reveal() {
         if (isRevealed) return
         isRevealed = true
-        button?.animate()?.alpha(1f)?.setDuration(200)?.start()
+        button?.animate()?.alpha(1f)?.setDuration(450)?.start()
     }
 
     fun updateColors(backgroundHex: String?, foregroundHex: String?) {

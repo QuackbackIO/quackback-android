@@ -24,7 +24,10 @@ object Quackback {
     private var themeFetched = false
     private val mainHandler = Handler(Looper.getMainLooper())
     private var launcherRevealFallback: Runnable? = null
-    private const val LAUNCHER_REVEAL_FALLBACK_MS: Long = 1500
+    // Small post-fetch delay so the launcher doesn't pop in the instant the
+    // network request returns — matches web + iOS.
+    private const val LAUNCHER_REVEAL_DELAY_MS: Long = 600
+    private const val LAUNCHER_REVEAL_FALLBACK_MS: Long = 1800
 
     private data class ServerTheme(
         val themeMode: String?,
@@ -173,9 +176,9 @@ object Quackback {
                 val colors = resolveLauncherColors()
                 launcher?.updateColors(colors.background, colors.foreground)
                 themeFetched = true
-                launcher?.reveal()
                 launcherRevealFallback?.let { mainHandler.removeCallbacks(it) }
                 launcherRevealFallback = null
+                mainHandler.postDelayed({ launcher?.reveal() }, LAUNCHER_REVEAL_DELAY_MS)
             }
         }.start()
     }
