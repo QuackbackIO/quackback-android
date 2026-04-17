@@ -2,6 +2,7 @@ package com.quackback.sdk.internal
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.app.Activity
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
@@ -33,8 +34,10 @@ internal class LauncherButton(
             gravity = Gravity.CENTER
         }
 
+        val iconTint = ColorStateList.valueOf(DEFAULT_ICON_COLOR)
         val chat = ImageView(activity).apply {
             setImageResource(R.drawable.qb_ic_chat)
+            imageTintList = iconTint
             scaleType = ImageView.ScaleType.FIT_CENTER
             alpha = 1f
         }
@@ -42,6 +45,7 @@ internal class LauncherButton(
 
         val close = ImageView(activity).apply {
             setImageResource(R.drawable.qb_ic_close)
+            imageTintList = iconTint
             scaleType = ImageView.ScaleType.FIT_CENTER
             alpha = 0f
             rotation = -90f
@@ -75,11 +79,22 @@ internal class LauncherButton(
             this.gravity = gravity
             setMargins(marginPx, marginPx, marginPx, marginPx)
         }
+        // Hidden until the server theme is applied (or a fallback timer elapses),
+        // to avoid a flash of the default color before the brand color lands.
+        btn.alpha = 0f
         (activity.window.decorView as FrameLayout).addView(btn, params)
         button = btn
     }
 
     fun remove() { button?.let { (it.parent as? FrameLayout)?.removeView(it) }; button = null }
+
+    private var isRevealed = false
+    /** Fade the launcher in. Safe to call multiple times; only the first call animates. */
+    fun reveal() {
+        if (isRevealed) return
+        isRevealed = true
+        button?.animate()?.alpha(1f)?.setDuration(200)?.start()
+    }
 
     fun updateColor(hex: String?) {
         val color = parseColor(hex)
@@ -124,6 +139,13 @@ internal class LauncherButton(
 
     private fun parseColor(hex: String?): Int =
         if (hex != null && hex.startsWith("#") && hex.length == 7)
-            try { Color.parseColor(hex) } catch (_: Exception) { Color.parseColor("#6366f1") }
-        else Color.parseColor("#6366f1")
+            try { Color.parseColor(hex) } catch (_: Exception) { DEFAULT_BG_COLOR }
+        else DEFAULT_BG_COLOR
+
+    companion object {
+        // Quackback brand defaults — shown before the server theme fetch
+        // completes, or as a permanent fallback if the fetch fails.
+        private val DEFAULT_BG_COLOR = Color.BLACK
+        private val DEFAULT_ICON_COLOR = Color.parseColor("#facc15")
+    }
 }

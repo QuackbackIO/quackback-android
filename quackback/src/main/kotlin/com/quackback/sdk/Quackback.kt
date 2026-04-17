@@ -2,6 +2,8 @@ package com.quackback.sdk
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.fragment.app.FragmentActivity
 import com.quackback.sdk.internal.*
 import org.json.JSONObject
@@ -18,6 +20,10 @@ object Quackback {
     private var pendingIdentify: String? = null
     private var currentActivity: Activity? = null
     private var serverTheme: ServerTheme? = null
+    private var themeFetched = false
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var launcherRevealFallback: Runnable? = null
+    private const val LAUNCHER_REVEAL_FALLBACK_MS: Long = 1500
 
     private data class ServerTheme(val lightPrimary: String, val darkPrimary: String)
 
@@ -74,7 +80,15 @@ object Quackback {
         val act = currentActivity ?: return
         if (launcher != null) return
         val color = resolveThemeColor()
-        launcher = LauncherButton(act, cfg.placement, color) { if (isShowing) close() else open() }.also { it.install() }
+        val btn = LauncherButton(act, cfg.placement, color) { if (isShowing) close() else open() }.also { it.install() }
+        launcher = btn
+        if (themeFetched) {
+            btn.reveal()
+        } else {
+            val fallback = Runnable { launcher?.reveal() }
+            launcherRevealFallback = fallback
+            mainHandler.postDelayed(fallback, LAUNCHER_REVEAL_FALLBACK_MS)
+        }
     }
 
     fun hideLauncher() { launcher?.remove(); launcher = null }
@@ -84,6 +98,9 @@ object Quackback {
     fun destroy() {
         dismiss(); hideLauncher(); wvManager?.tearDown(); wvManager = null
         emitter.removeAll(); config = null; pendingIdentify = null; serverTheme = null
+        themeFetched = false
+        launcherRevealFallback?.let { mainHandler.removeCallbacks(it) }
+        launcherRevealFallback = null
         (currentActivity?.applicationContext as? Application)?.unregisterActivityLifecycleCallbacks(lifecycle)
         currentActivity = null
     }
@@ -115,15 +132,18 @@ object Quackback {
                             lightPrimary = t.optString("lightPrimary", "#6366f1"),
                             darkPrimary = t.optString("darkPrimary", "#6366f1"),
                         )
-                        // Update launcher if already showing
-                        currentActivity?.runOnUiThread {
-                            launcher?.updateColor(resolveThemeColor())
-                        }
                     }
                 }
                 conn.disconnect()
             } catch (_: Exception) {
-                // Network error — use defaults
+                // Network error — fall back to default color
+            }
+            mainHandler.post {
+                launcher?.updateColor(resolveThemeColor())
+                themeFetched = true
+                launcher?.reveal()
+                launcherRevealFallback?.let { mainHandler.removeCallbacks(it) }
+                launcherRevealFallback = null
             }
         }.start()
     }
